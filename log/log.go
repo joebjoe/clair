@@ -8,6 +8,7 @@ import (
 )
 
 type Logger interface {
+	Handler() slog.Handler
 	With(args ...any) *slog.Logger
 	WithGroup(name string) *slog.Logger
 	Enabled(ctx context.Context, level slog.Level) bool
@@ -42,7 +43,7 @@ func New(opts ...Option) (l Logger) {
 			Level:       slog.LevelInfo,
 			ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr { return a },
 		},
-		json: true,
+		json: false,
 		w:    os.Stderr,
 	}
 
@@ -69,6 +70,7 @@ func New(opts ...Option) (l Logger) {
 	return slog.New(slog.NewTextHandler(config.w, &config.HandlerOptions))
 }
 
+func Handler() slog.Handler                              { return logger.Handler() }
 func With(args ...any) *slog.Logger                      { return logger.With(args...) }
 func WithGroup(name string) *slog.Logger                 { return logger.WithGroup(name) }
 func Enabled(ctx context.Context, level slog.Level) bool { return logger.Enabled(ctx, level) }
