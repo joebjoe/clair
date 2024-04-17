@@ -49,12 +49,16 @@ func (l *logger) PanicContext(_ context.Context, msg string, args ...any) {
 func (l *logger) With(args ...any) Logger      { return &logger{l.Logger.With(args...)} }
 func (l *logger) WithGroup(name string) Logger { return &logger{l.Logger.WithGroup(name)} }
 
-var defaultLogger = NewDefaultLogger()
+var defaultLogger = newLogger()
 
 func InitDefaultLogger()       { _ = NewDefaultLogger() }
 func Init(opts ...Option)      { _ = New(opts...) }
 func NewDefaultLogger() Logger { return New() }
 func New(opts ...Option) (l Logger) {
+	defer func() { defaultLogger = l }()
+	return New(opts...)
+}
+func newLogger(opts ...Option) (l Logger) {
 	config := Config{
 		HandlerOptions: slog.HandlerOptions{
 			AddSource:   false,
@@ -66,15 +70,9 @@ func New(opts ...Option) (l Logger) {
 	}
 
 	defer func() {
-		if l == nil {
-			return
-		}
-
 		if config.prefix != "" {
 			l = l.With(slog.String("prefix", config.prefix))
 		}
-
-		defaultLogger = l
 	}()
 
 	for _, o := range opts {
