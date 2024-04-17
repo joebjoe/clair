@@ -3,6 +3,7 @@ package log
 import (
 	"io"
 	"log/slog"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -52,31 +53,33 @@ func WithSource(c *Config) { c.AddSource = true }
 func WithSourceDepth(n int) Option {
 	return func(c *Config) {
 		WithSource(c)
-		WithReplaceAttr(func(_ []string, a slog.Attr) slog.Attr {
+		WithReplaceAttr(func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key != slog.SourceKey {
 				return a
 			}
 
-			src, ok := a.Value.Any().(*slog.Source)
-			if !ok {
-				return a
+			src := a.Value.Any().(*slog.Source)
+			// file replacing
+			{
+				parts := strings.Split(src.File, string(filepath.Separator))
+				if len(parts) > n {
+					src.File = filepath.Join(parts[len(parts)-n:]...)
+				}
 			}
 
-			pathParts := strings.Split(src.File, string(filepath.Separator))
-			if len(pathParts) < n {
-				src.File = filepath.Join(pathParts[len(pathParts)-n:]...)
-				a.Value = slog.AnyValue(src)
-			}
+			src.Function = path.Base(src.Function)
+
+			a.Value = slog.AnyValue(src)
 
 			return a
-		})
+		})(c)
 	}
 }
 
-func WithTimeFormat(fmt string) Option {
+func WithTimeFormat(format string) Option {
 	return WithReplaceAttr(func(_ []string, a slog.Attr) slog.Attr {
 		if a.Key == slog.TimeKey && !a.Value.Time().IsZero() {
-			a.Value = slog.StringValue(a.Value.Time().Format(fmt))
+			a.Value = slog.StringValue(a.Value.Time().Format(format))
 		}
 
 		return a
