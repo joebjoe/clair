@@ -56,7 +56,7 @@ func Init(opts ...Option)      { _ = New(opts...) }
 func NewDefaultLogger() Logger { return New() }
 func New(opts ...Option) (l Logger) {
 	defer func() { defaultLogger = l }()
-	return New(opts...)
+	return newLogger(opts...)
 }
 func newLogger(opts ...Option) (l Logger) {
 	config := Config{
