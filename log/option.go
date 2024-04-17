@@ -57,7 +57,7 @@ func WithSourceDepth(n int) Option {
 				return a
 			}
 
-			src, ok := a.Value.Any().(slog.Source)
+			src, ok := a.Value.Any().(*slog.Source)
 			if !ok {
 				return a
 			}
