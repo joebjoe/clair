@@ -4,8 +4,6 @@ import (
 	"io"
 	"log/slog"
 	"path"
-	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -60,12 +58,12 @@ func WithSourceDepth(n int) Option {
 
 			src := a.Value.Any().(*slog.Source)
 			// file replacing
-			{
-				parts := strings.Split(src.File, string(filepath.Separator))
-				if len(parts) > n {
-					src.File = filepath.Join(parts[len(parts)-n:]...)
-				}
-			}
+			//{
+			//	parts := strings.Split(src.File, string(filepath.Separator))
+			//	if len(parts) > n {
+			//		src.File = filepath.Join(parts[len(parts)-n:]...)
+			//	}
+			//}
 
 			src.Function = path.Base(src.Function)
 
