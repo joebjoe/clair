@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -9,8 +10,8 @@ import (
 
 type Logger interface {
 	Handler() slog.Handler
-	With(args ...any) *slog.Logger
-	WithGroup(name string) *slog.Logger
+	With(args ...any) Logger
+	WithGroup(name string) Logger
 	Enabled(ctx context.Context, level slog.Level) bool
 	Log(ctx context.Context, level slog.Level, msg string, args ...any)
 	LogAttrs(ctx context.Context, level slog.Level, msg string, attrs ...slog.Attr)
@@ -22,6 +23,8 @@ type Logger interface {
 	WarnContext(ctx context.Context, msg string, args ...any)
 	Error(msg string, args ...any)
 	ErrorContext(ctx context.Context, msg string, args ...any)
+	Panic(msg string, args ...any)
+	PanicContext(ctx context.Context, msg string, args ...any)
 }
 
 type Config struct {
@@ -31,7 +34,22 @@ type Config struct {
 	prefix string
 }
 
-var logger = NewDefaultLogger()
+type logger struct {
+	*slog.Logger
+}
+
+func (l *logger) Panic(msg string, args ...any) {
+	l.Error(msg, args...)
+	panic(fmt.Sprint(append([]any{msg}, args...)...))
+}
+func (l *logger) PanicContext(_ context.Context, msg string, args ...any) {
+	l.Panic(msg, args...)
+}
+
+func (l *logger) With(args ...any) Logger      { return &logger{l.Logger.With(args...)} }
+func (l *logger) WithGroup(name string) Logger { return &logger{l.Logger.WithGroup(name)} }
+
+var defaultLogger = NewDefaultLogger()
 
 func InitDefaultLogger()       { _ = NewDefaultLogger() }
 func Init(opts ...Option)      { _ = New(opts...) }
@@ -56,7 +74,7 @@ func New(opts ...Option) (l Logger) {
 			l = l.With(slog.String("prefix", config.prefix))
 		}
 
-		logger = l
+		defaultLogger = l
 	}()
 
 	for _, o := range opts {
@@ -64,31 +82,39 @@ func New(opts ...Option) (l Logger) {
 	}
 
 	if config.json {
-		return slog.New(slog.NewJSONHandler(config.w, &config.HandlerOptions))
+		return &logger{slog.New(slog.NewJSONHandler(config.w, &config.HandlerOptions))}
 	}
 
-	return slog.New(slog.NewTextHandler(config.w, &config.HandlerOptions))
+	return &logger{slog.New(slog.NewTextHandler(config.w, &config.HandlerOptions))}
 }
 
-func Handler() slog.Handler                              { return logger.Handler() }
-func With(args ...any) *slog.Logger                      { return logger.With(args...) }
-func WithGroup(name string) *slog.Logger                 { return logger.WithGroup(name) }
-func Enabled(ctx context.Context, level slog.Level) bool { return logger.Enabled(ctx, level) }
+func Handler() slog.Handler                              { return defaultLogger.Handler() }
+func With(args ...any) Logger                            { return defaultLogger.With(args...) }
+func WithGroup(name string) Logger                       { return defaultLogger.WithGroup(name) }
+func Enabled(ctx context.Context, level slog.Level) bool { return defaultLogger.Enabled(ctx, level) }
 func Log(ctx context.Context, level slog.Level, msg string, args ...any) {
-	logger.Log(ctx, level, msg, args...)
+	defaultLogger.Log(ctx, level, msg, args...)
 }
 func LogAttrs(ctx context.Context, level slog.Level, msg string, attrs ...slog.Attr) {
-	logger.LogAttrs(ctx, level, msg, attrs...)
+	defaultLogger.LogAttrs(ctx, level, msg, attrs...)
 }
-func Debug(msg string, args ...any) { logger.Debug(msg, args...) }
+func Debug(msg string, args ...any) { defaultLogger.Debug(msg, args...) }
 func DebugContext(ctx context.Context, msg string, args ...any) {
-	logger.DebugContext(ctx, msg, args...)
+	defaultLogger.DebugContext(ctx, msg, args...)
 }
-func Info(msg string, args ...any)                             { logger.Info(msg, args...) }
-func InfoContext(ctx context.Context, msg string, args ...any) { logger.InfoContext(ctx, msg, args...) }
-func Warn(msg string, args ...any)                             { logger.Warn(msg, args...) }
-func WarnContext(ctx context.Context, msg string, args ...any) { logger.WarnContext(ctx, msg, args...) }
-func Error(msg string, args ...any)                            { logger.Error(msg, args...) }
+func Info(msg string, args ...any) { defaultLogger.Info(msg, args...) }
+func InfoContext(ctx context.Context, msg string, args ...any) {
+	defaultLogger.InfoContext(ctx, msg, args...)
+}
+func Warn(msg string, args ...any) { defaultLogger.Warn(msg, args...) }
+func WarnContext(ctx context.Context, msg string, args ...any) {
+	defaultLogger.WarnContext(ctx, msg, args...)
+}
+func Error(msg string, args ...any) { defaultLogger.Error(msg, args...) }
 func ErrorContext(ctx context.Context, msg string, args ...any) {
-	logger.ErrorContext(ctx, msg, args...)
+	defaultLogger.ErrorContext(ctx, msg, args...)
+}
+func Panic(msg string, args ...any) { defaultLogger.Panic(msg, args...) }
+func PanicContext(ctx context.Context, msg string, args ...any) {
+	defaultLogger.PanicContext(ctx, msg, args...)
 }
